@@ -86,14 +86,28 @@
                                    transitionStyle: (UIModalTransitionStyle)transitionStyle
                                      defaultParams: (NSDictionary *)defaultParams
                                             isRoot: (BOOL)isRoot
+                                           isModal: (BOOL)isModal
+                          hidesBottomBarWhenPushed:(BOOL)hidesBottomBarWhenPushed{
+    UPRouterOptions *options = [[UPRouterOptions alloc] init];
+    options.presentationStyle = presentationStyle;
+    options.transitionStyle = transitionStyle;
+    options.defaultParams = defaultParams;
+    options.shouldOpenAsRootViewController = isRoot;
+    options.modal = isModal;
+    options.hidesBottomBarWhenPushed = hidesBottomBarWhenPushed;
+    return options;
+}
++ (instancetype)routerOptionsWithPresentationStyle: (UIModalPresentationStyle)presentationStyle
+                                   transitionStyle: (UIModalTransitionStyle)transitionStyle
+                                     defaultParams: (NSDictionary *)defaultParams
+                                            isRoot: (BOOL)isRoot
                                            isModal: (BOOL)isModal {
-  UPRouterOptions *options = [[UPRouterOptions alloc] init];
-  options.presentationStyle = presentationStyle;
-  options.transitionStyle = transitionStyle;
-  options.defaultParams = defaultParams;
-  options.shouldOpenAsRootViewController = isRoot;
-  options.modal = isModal;
-  return options;
+    return [self routerOptionsWithPresentationStyle:presentationStyle
+                                    transitionStyle:transitionStyle
+                                      defaultParams:defaultParams
+                                             isRoot:isRoot
+                                            isModal:isModal
+                           hidesBottomBarWhenPushed:NO];
 }
 //Default construction; like [NSArray array]
 + (instancetype)routerOptions {
@@ -140,6 +154,15 @@
                                            isRoot:YES
                                           isModal:NO];
 }
++ (instancetype)routerOptionsAsHidesBottomBarWhenPushed {
+    return [self routerOptionsWithPresentationStyle:UIModalPresentationNone
+                                    transitionStyle:UIModalTransitionStyleCoverVertical
+                                      defaultParams:nil
+                                             isRoot:NO
+                                            isModal:NO
+                           hidesBottomBarWhenPushed:YES];
+}
+
 
 //Exposed methods previously supported
 + (instancetype)modal {
@@ -301,6 +324,7 @@
     [self.navigationController setViewControllers:@[controller] animated:animated];
   }
   else {
+      controller.hidesBottomBarWhenPushed = options.hidesBottomBarWhenPushed;
     [self.navigationController pushViewController:controller animated:animated];
   }
 }

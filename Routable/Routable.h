@@ -77,6 +77,14 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
                                      defaultParams: (NSDictionary *)defaultParams
                                             isRoot: (BOOL)isRoot
                                            isModal: (BOOL)isModal;
+
++ (instancetype)routerOptionsWithPresentationStyle: (UIModalPresentationStyle)presentationStyle
+                                   transitionStyle: (UIModalTransitionStyle)transitionStyle
+                                     defaultParams: (NSDictionary *)defaultParams
+                                            isRoot: (BOOL)isRoot
+                                           isModal: (BOOL)isModal
+                          hidesBottomBarWhenPushed: (BOOL)hidesBottomBarWhenPushed;
+
 /**
  @return A new instance of `UPRouterOptions` with its properties set to default
  */
@@ -108,6 +116,8 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
  @return A new instance of `UPRouterOptions`, setting the `shouldOpenAsRootViewController` property to `YES`
  */
 + (instancetype)routerOptionsAsRoot;
+
++ (instancetype)routerOptionsAsHidesBottomBarWhenPushed;
 
 //previously supported
 /**
@@ -192,6 +202,8 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
  The property determining if the mapped `UIViewController` instance should be set as the root view controller of the router's `UINavigationController` instance.
  */
 @property (readwrite, nonatomic, assign) BOOL shouldOpenAsRootViewController;
+
+@property (readwrite, nonatomic, assign) BOOL hidesBottomBarWhenPushed;
 
 @end
 
