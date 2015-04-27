@@ -154,7 +154,7 @@
                                            isRoot:YES
                                           isModal:NO];
 }
-+ (instancetype)routerOptionsAsHidesBottomBarWhenPushed {
++ (instancetype)routerOptionsHidesBottomBarWhenPushed {
     return [self routerOptionsWithPresentationStyle:UIModalPresentationNone
                                     transitionStyle:UIModalTransitionStyleCoverVertical
                                       defaultParams:nil

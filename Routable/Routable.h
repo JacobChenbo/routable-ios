@@ -117,7 +117,7 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
  */
 + (instancetype)routerOptionsAsRoot;
 
-+ (instancetype)routerOptionsAsHidesBottomBarWhenPushed;
++ (instancetype)routerOptionsHidesBottomBarWhenPushed;
 
 //previously supported
 /**
