@@ -48,10 +48,10 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
  
  ```
  UPRouterOptions *options = [UPRouterOptions routerOptionsWithPresentationStyle: UIModalPresentationFormSheet
-                                                                transitionStyle: UIModalTransitionFormSheet
-                                                                  defaultParams: nil
-                                                                         isRoot: NO
-                                                                        isModal: YES];
+ transitionStyle: UIModalTransitionFormSheet
+ defaultParams: nil
+ isRoot: NO
+ isModal: YES];
  ```
  
  Or, for most properties taking the default value:
@@ -63,6 +63,7 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
  */
 
 @interface UPRouterOptions : NSObject
+
 
 /**
  @return A new instance of `UPRouterOptions` with its properties explicitly set
@@ -84,6 +85,14 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
                                             isRoot: (BOOL)isRoot
                                            isModal: (BOOL)isModal
                           hidesBottomBarWhenPushed: (BOOL)hidesBottomBarWhenPushed;
+
++ (instancetype)routerOptionsWithPresentationStyle: (UIModalPresentationStyle)presentationStyle
+                                   transitionStyle: (UIModalTransitionStyle)transitionStyle
+                                     defaultParams: (NSDictionary *)defaultParams
+                                            isRoot: (BOOL)isRoot
+                                           isModal: (BOOL)isModal
+                          hidesBottomBarWhenPushed: (BOOL)hidesBottomBarWhenPushed
+                                 shouldPushInModal: (BOOL)shouldPushInModal;
 
 /**
  @return A new instance of `UPRouterOptions` with its properties set to default
@@ -118,6 +127,8 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
 + (instancetype)routerOptionsAsRoot;
 
 + (instancetype)routerOptionsHidesBottomBarWhenPushed;
+
++ (instancetype)routerOptionsPushInModal;
 
 //previously supported
 /**
@@ -205,50 +216,52 @@ typedef void (^RouterOpenCallback)(NSDictionary *params);
 
 @property (readwrite, nonatomic, assign) BOOL hidesBottomBarWhenPushed;
 
+@property (readwrite, nonatomic, assign) BOOL shouldPushInModal;
+
 @end
 
 /**
  `UPRouter` is the main class you interact with to map URLs to either opening `UIViewController`s or running anonymous functions.
  
  For example:
-
-     [[Routable sharedRouter] map:@"users/:id" toController:[UserController class]];
-     [[Routable sharedRouter] setNavigationController: aNavigationController];
-     
-     // In UserController.m
-     @implementation UserController
-     
-     // params will be non-nil
-     - (id)initWithRouterParams:(NSDictionary *)params {
-       if ((self = [self initWithNibName:nil bundle:nil])) {
-         self.userId = [params objectForKey:@"id"];
-       }
-       return self;
-     }
+ 
+ [[Routable sharedRouter] map:@"users/:id" toController:[UserController class]];
+ [[Routable sharedRouter] setNavigationController: aNavigationController];
+ 
+ // In UserController.m
+ @implementation UserController
+ 
+ // params will be non-nil
+ - (id)initWithRouterParams:(NSDictionary *)params {
+ if ((self = [self initWithNibName:nil bundle:nil])) {
+ self.userId = [params objectForKey:@"id"];
+ }
+ return self;
+ }
  
  Anonymous methods can also be routed:
-
-     [[Routable sharedRouter] map:@"logout" toCallback:^(NSDictionary *params) {
-       [User logout];
-     }];
-     
-     [[Routable sharedRouter] map:@"invalidate/:id" toCallback:^(NSDictionary *params) {
-       [Cache invalidate: [params objectForKey:@"id"]]];
-     }];
+ 
+ [[Routable sharedRouter] map:@"logout" toCallback:^(NSDictionary *params) {
+ [User logout];
+ }];
+ 
+ [[Routable sharedRouter] map:@"invalidate/:id" toCallback:^(NSDictionary *params) {
+ [Cache invalidate: [params objectForKey:@"id"]]];
+ }];
  
  If you wish to do custom allocation of a controller, you can use controllerWithRouterParams:
  
-     [[Routable sharedRouter] map:@"users/:id" toController:[StoryboardController class]];
+ [[Routable sharedRouter] map:@"users/:id" toController:[StoryboardController class]];
  
-     @implementation StoryboardController
-     
-     + (id)controllerWithRouterParams:(NSDictionary *)params {
-        UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Storyboard" bundle:nil];
-        StoryboardController *instance = [storyboard instantiateViewControllerWithIdentifier:@"sbController"];
-        instance.userId = [params objectForKey:@"id"];
+ @implementation StoryboardController
  
-        return instance;
-     }
+ + (id)controllerWithRouterParams:(NSDictionary *)params {
+ UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Storyboard" bundle:nil];
+ StoryboardController *instance = [storyboard instantiateViewControllerWithIdentifier:@"sbController"];
+ instance.userId = [params objectForKey:@"id"];
+ 
+ return instance;
+ }
  
  */
 @interface UPRouter : NSObject
