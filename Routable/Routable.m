@@ -25,6 +25,8 @@
 
 #import "Routable.h"
 
+#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
+
 @implementation Routable
 
 + (instancetype)sharedRouter {
@@ -240,6 +242,13 @@
 // i.e. "users/16"
 @property (readwrite, nonatomic, strong) NSMutableDictionary *cachedRoutes;
 
+/*
+ * 判断当前open的url是否包含“?”
+ * 如果包含“?”，则根据“?”解析url，并做跳转 i.e. "users?id=1&name=2"
+ * 如果不包含“?”，则根据路径解析url，并做跳转（默认为这种情况） i.e. "users/1/2"
+ */
+@property (readwrite, nonatomic, assign) BOOL isURLFormatWithQuestionMark;
+
 @end
 
 #define ROUTE_NOT_FOUND_FORMAT @"No route found for URL %@"
@@ -307,6 +316,9 @@
     animated:(BOOL)animated
  extraParams:(NSDictionary *)extraParams
 {
+    // 判断url是否包含“?”
+    self.isURLFormatWithQuestionMark = [self isUrlContainsQuestionMark:url];
+    
     RouterParams *params = [self routerParamsForUrl:url extraParams: extraParams];
     UPRouterOptions *options = params.routerOptions;
     
@@ -407,16 +419,41 @@
     }
     
     __block RouterParams *openParams = nil;
+    __block NSMutableArray *givenPartsForOpenURL = nil;
     [self.routes enumerateKeysAndObjectsUsingBlock:
      ^(NSString *routerUrl, UPRouterOptions *routerOptions, BOOL *stop) {
          
-         NSArray *routerParts = [routerUrl pathComponents];
-         if ([routerParts count] == [givenParts count]) {
+         if (!self.isURLFormatWithQuestionMark) {
+             // open URL 不包含"?"，一般情况，路径匹配
+             NSArray *routerParts = [routerUrl pathComponents];
+             if ([routerParts count] == [givenParts count]) {
+                 
+                 NSDictionary *givenParams = [self paramsForUrlComponents:givenParts routerUrlComponents:routerParts];
+                 if (givenParams) {
+                     openParams = [[RouterParams alloc] initWithRouterOptions:routerOptions openParams:givenParams extraParams: extraParams];
+                     *stop = YES;
+                 }
+             }
+         } else {
+             // open URL 包含"?"，根据"?"解析 i.e. "users?id=1&name=2"
+             NSArray *routerPartsForOpenURL = [url componentsSeparatedByString:@"?"];
+             if (routerPartsForOpenURL.count != 2) {
+                 *stop = YES;   // open URL 异常
+             }
+             NSArray *routerPartsForKey = [(NSString *)routerPartsForOpenURL[0] pathComponents];
+             NSArray *routerPartsForParams = [(NSString *)routerPartsForOpenURL[1] componentsSeparatedByString:@"&"];
+             givenPartsForOpenURL = [[NSMutableArray alloc] initWithArray:routerPartsForKey];
+             for (NSString *param in routerPartsForParams) {
+                 [givenPartsForOpenURL addObject:param];
+             }
              
-             NSDictionary *givenParams = [self paramsForUrlComponents:givenParts routerUrlComponents:routerParts];
+             NSArray *routerParts = [routerUrl pathComponents];
+             NSDictionary *givenParams = [self paramsForUrlComponents:givenPartsForOpenURL paramsPartForUrlComponets:routerPartsForParams routerUrlComponents:routerParts];
              if (givenParams) {
-                 openParams = [[RouterParams alloc] initWithRouterOptions:routerOptions openParams:givenParams extraParams: extraParams];
-                 *stop = YES;
+                 openParams = [[RouterParams alloc] initWithRouterOptions:routerOptions openParams:givenParams extraParams:extraParams];
+                 if (routerPartsForParams.count == givenParams.count) {
+                     *stop = YES; // 只有当open url的所有参数都匹配上了，才结束查找
+                 }
              }
          }
      }];
@@ -457,6 +494,55 @@
     return params;
 }
 
+// 新增方法，解析带"?"的参数
+- (NSDictionary *)paramsForUrlComponents:(NSArray *)givenUrlComponents
+               paramsPartForUrlComponets:(NSArray *)paramsPartComonents
+                     routerUrlComponents:(NSArray *)routerUrlComponents {
+    __block NSMutableDictionary *params = [NSMutableDictionary dictionary];
+    [routerUrlComponents enumerateObjectsUsingBlock:^(NSString *routerComponent, NSUInteger idx, BOOL *stop) {
+        NSString *givenComponent = [givenUrlComponents objectAtIndex:idx < givenUrlComponents.count ? idx: givenUrlComponents.count - 1];
+        if ([routerComponent hasPrefix:@":"]) {
+            NSString *key = [routerComponent substringFromIndex:1];
+            // 传进来的参数，有可能数量和顺序都跟map定义的不一样，
+            // 所以这里要用key字符串来匹配
+            for (NSString *paramPart in paramsPartComonents) {
+                // id=1
+                NSArray *keyValue = [paramPart componentsSeparatedByString:@"="];
+                if (keyValue.count < 2) {
+                    params = nil;
+                    *stop = YES;   // 参数异常
+                }
+                if ([keyValue[0] isEqualToString:key]) {
+                    if (keyValue.count == 2) {
+                        [params setObject:keyValue[1] forKey:key];
+                    } else {
+                        // web url base64 编码以后可能会带有多个=，特殊处理
+                        NSMutableArray *subArr = [NSMutableArray arrayWithArray:keyValue];
+                        [subArr removeObjectAtIndex:0];
+                        [params setObject:[subArr componentsJoinedByString:@"="] forKey:key];
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        else if (![routerComponent isEqualToString:givenComponent]) {
+            params = nil; // map的key不同
+            *stop = YES;
+        }
+    }];
+    return params;
+}
+
+- (BOOL)isUrlContainsQuestionMark:(NSString *)url {
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"8.0")) {
+        return [url containsString:@"?"];
+    } else {
+        NSRange range = [url rangeOfString:@"?"];
+        return (range.location != NSNotFound);
+    }
+}
+
 - (UIViewController *)controllerForRouterParams:(RouterParams *)params {
     SEL CONTROLLER_CLASS_SELECTOR = sel_registerName("allocWithRouterParams:");
     SEL CONTROLLER_SELECTOR = sel_registerName("initWithRouterParams:");
@@ -486,4 +572,3 @@
 }
 
 @end
-
